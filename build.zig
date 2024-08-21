@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
         .root_module = .{
             .target = target,
             .optimize = optimize,
+            .pic = if (linkage == .dynamic) true else null,
         },
         .name = "cyclonedds",
         .kind = .lib,
@@ -290,10 +291,12 @@ const ddsrt_sources_linux = [_][]const u8{
     "src/ddsrt/src/sockets/posix/socket.c",
     "src/ddsrt/src/threads/posix/threads.c",
     "src/ddsrt/src/time/posix/time.c",
+    "src/ddsrt/src/netstat/linux/netstat.c",
     "src/ddsrt/src/sync/posix/sync.c", // TODO make multi platform?
 };
 
 const ddsrt_sources_windows = [_][]const u8{
+    "src/ddsrt/src/heap/posix/heap.c", // Windows seems to use the posix heap as well in the cyclone cmakelist
     "src/ddsrt/src/dynlib/windows/dynlib.c",
     "src/ddsrt/src/environ/windows/environ.c",
     "src/ddsrt/src/filesystem/windows/filesystem.c",
@@ -304,6 +307,9 @@ const ddsrt_sources_windows = [_][]const u8{
     "src/ddsrt/src/sync/windows/sync.c",
     "src/ddsrt/src/threads/windows/threads.c",
     "src/ddsrt/src/time/windows/time.c",
+    "src/ddsrt/src/ifaddrs/windows/ifaddrs.c",
+    "src/ddsrt/src/sockets/windows/socket.c",
+    "src/ddsrt/src/sockets/windows/gethostname.c",
 };
 
 const ddsrt_sources_common = [_][]const u8{
