@@ -7,14 +7,15 @@ pub fn build(b: *std.Build) void {
 
     const linkage = b.option(std.builtin.LinkMode, "linkage", "Specify static or dynamic linkage") orelse .dynamic;
     const upstream = b.dependency("cyclonedds", .{});
-    var lib = std.Build.Step.Compile.create(b, .{
-        .root_module = .{
-            .target = target,
-            .optimize = optimize,
-            .pic = if (linkage == .dynamic) true else null,
-        },
+    var lib = b.addLibrary(.{
         .name = "cyclonedds",
-        .kind = .lib,
+        .root_module = b.createModule(
+            .{
+                .target = target,
+                .optimize = optimize,
+                .pic = if (linkage == .dynamic) true else null,
+            },
+        ),
         .linkage = linkage,
     });
 
@@ -52,14 +53,14 @@ pub fn build(b: *std.Build) void {
             .include_path = "dds/version.h",
         },
         .{
-            .DDS_VERSION = "0.10.5",
-            .DDS_VERSION_MAJOR = 0,
-            .DDS_VERSION_MINOR = 10,
-            .DDS_VERSION_PATCH = 5,
-            .DDS_VERSION_TWEAK = "",
-            .DDS_PROJECT_NAME = "CycloneDDS",
-            .DDS_HOST_NAME = "Linux",
-            .DDS_TARGET_NAME = "Linux",
+            .CycloneDDS_VERSION = "0.10.5",
+            .CycloneDDS_VERSION_MAJOR = 0,
+            .CycloneDDS_VERSION_MINOR = 10,
+            .CycloneDDS_VERSION_PATCH = 5,
+            .CycloneDDS_VERSION_TWEAK = "",
+            .PROJECT_NAME = "CycloneDDS",
+            .CMAKE_HOST_SYSTEM_NAME = "Linux",
+            .CMAKE_SYSTEM_NAME = "Linux",
         },
     );
     lib.addConfigHeader(version);

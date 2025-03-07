@@ -3,7 +3,7 @@
 This provides a zig package for the Cyclonedds project.
 This particular build is intended to be used with ROS2 and its features and configuration match that as of ROS2 Jazzy.
 With that said it should work fine stand alone.
-This currently targets zig 0.13 and Cyclone 0.10.5.
+This currently targets zig 0.14.0 and Cyclone 0.10.5.
 
 ## Windows support
 
