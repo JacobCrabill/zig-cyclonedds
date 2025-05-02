@@ -3,7 +3,7 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const linkage = b.option(std.builtin.LinkMode, "linkage", "Specify static or dynamic linkage") orelse .dynamic;
+    const linkage = b.option(std.builtin.LinkMode, "linkage", "Specify static or dynamic linkage") orelse .static;
 
     const upstream = b.dependency("cyclonedds", .{});
     const iceoryx = b.dependency("iceoryx", .{ .target = target, .optimize = optimize, .linkage = linkage });
@@ -148,6 +148,10 @@ pub fn build(b: *std.Build) void {
         .files = &cyclonedds_security_sources,
     });
     b.installArtifact(lib);
+
+    // Also be sure to install the RouDi executable from Iceoryx
+    // This process is needed to enable shared memory use!
+    b.installArtifact(iceoryx.artifact("iox-roudi"));
 }
 
 const cyclonedds_security_sources = [_][]const u8{
