@@ -28,6 +28,7 @@ pub fn build(b: *std.Build) void {
 
     lib.linkLibC();
     lib.linkLibrary(iceoryx_binding_c);
+    lib.installLibraryHeaders(iceoryx_binding_c);
 
     // These config headers are taken from the ROS Jazzy install wherever possible
     const features = b.addConfigHeader(
