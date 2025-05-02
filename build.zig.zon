@@ -11,8 +11,8 @@
             .hash = "N-V-__8AACnWFwGlpbCwe75eP_FCTGeA9OVoBZaAm1f78VV3",
         },
         .iceoryx = .{
-            .url = "https://github.com/JacobCrabill/zig-iceoryx/archive/72c6698db6bfcd212eb0f9342e179c0db9edc081.tar.gz",
-            .hash = "zig_iceoryx-2.95.4-HVvgtnVnAABx4_T6cYkDbhbpstSfEalej0AwOH_vjWq8",
+            .url = "https://github.com/JacobCrabill/zig-iceoryx/archive/ccf4db740f81b46c2e9c2cec9525307c02a33662.tar.gz",
+            .hash = "zig_iceoryx-2.95.4-HVvgttlnAABVyp8L3jby2prsqAXki-H-adNpJ9nvoOuW",
         },
     },
     .paths = .{
