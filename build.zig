@@ -2,11 +2,13 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-
     const optimize = b.standardOptimizeOption(.{});
-
     const linkage = b.option(std.builtin.LinkMode, "linkage", "Specify static or dynamic linkage") orelse .dynamic;
+
     const upstream = b.dependency("cyclonedds", .{});
+    const iceoryx = b.dependency("iceoryx", .{ .target = target, .optimize = optimize, .linkage = linkage });
+    const iceoryx_binding_c = iceoryx.artifact("iceoryx_binding_c");
+
     var lib = b.addLibrary(.{
         .name = "cyclonedds",
         .root_module = b.createModule(
@@ -25,6 +27,7 @@ pub fn build(b: *std.Build) void {
     }
 
     lib.linkLibC();
+    lib.linkLibrary(iceoryx_binding_c);
 
     // These config headers are taken from the ROS Jazzy install wherever possible
     const features = b.addConfigHeader(
@@ -41,7 +44,7 @@ pub fn build(b: *std.Build) void {
             .DDS_HAS_SSL = 0, // TODO this is on in ROS but I don't have a build for ssl yet
             .DDS_HAS_TYPE_DISCOVERY = 1,
             .DDS_HAS_TOPIC_DISCOVERY = 1,
-            .DDS_HAS_SHM = 0, // TODO this is on in ROS but we don't build iceoryx yet.
+            .DDS_HAS_SHM = 1,
         },
     );
     lib.addConfigHeader(features);
@@ -204,7 +207,7 @@ const ddsi_sources = [_][]const u8{
     "src/core/ddsi/src/ddsi_sertype_default.c",
     "src/core/ddsi/src/ddsi_sertype_plist.c",
     "src/core/ddsi/src/ddsi_sertype_pserop.c",
-    // "src/core/ddsi/src/ddsi_shm_transport.c", // No shared mem for now so we don't need to build iceoryx
+    "src/core/ddsi/src/ddsi_shm_transport.c",
     "src/core/ddsi/src/ddsi_ssl.c",
     "src/core/ddsi/src/ddsi_statistics.c",
     "src/core/ddsi/src/ddsi_tcp.c",
@@ -281,11 +284,11 @@ const ddsc_sources = [_][]const u8{
     "src/core/ddsc/src/dds_whc.c",
     "src/core/ddsc/src/dds_write.c",
     "src/core/ddsc/src/dds_writer.c",
-    // "src/core/ddsc/src/shm_monitor.c", // no shared mem for now so we don't need to build iceoryx
+    "src/core/ddsc/src/shm_monitor.c",
 };
 
 const ddsrt_sources_linux = [_][]const u8{
-    "src/ddsrt/src/dynlib/posix/dynlib.c", // Required for security, which uses pluggins (shouldn't impact base static build?)
+    "src/ddsrt/src/dynlib/posix/dynlib.c", // Required for security, which uses plugins (shouldn't impact base static build?)
     "src/ddsrt/src/environ/posix/environ.c",
     "src/ddsrt/src/filesystem/posix/filesystem.c",
     "src/ddsrt/src/heap/posix/heap.c",

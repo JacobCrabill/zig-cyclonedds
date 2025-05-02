@@ -10,6 +10,10 @@
             .url = "https://github.com/eclipse-cyclonedds/cyclonedds/archive/tags/0.10.5.tar.gz", // Jazzy
             .hash = "N-V-__8AACnWFwGlpbCwe75eP_FCTGeA9OVoBZaAm1f78VV3",
         },
+        .iceoryx = .{
+            .url = "https://github.com/JacobCrabill/zig-iceoryx/archive/72c6698db6bfcd212eb0f9342e179c0db9edc081.tar.gz",
+            .hash = "zig_iceoryx-2.95.4-HVvgtnVnAABx4_T6cYkDbhbpstSfEalej0AwOH_vjWq8",
+        },
     },
     .paths = .{
         "build.zig",
