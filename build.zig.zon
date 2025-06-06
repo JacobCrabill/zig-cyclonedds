@@ -13,6 +13,7 @@
         .iceoryx = .{
             .url = "https://github.com/JacobCrabill/zig-iceoryx/archive/7290df34185c293eadb408b70aa1e3d534c28f6f.tar.gz",
             .hash = "zig_iceoryx-2.95.4-HVvgtnRsAABR0yz96gj3b-2fEGjUtNzCCoUiNYD9qI6C",
+            .lazy = true,
         },
     },
     .paths = .{

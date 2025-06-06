@@ -1,13 +1,19 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const linkage = b.option(std.builtin.LinkMode, "linkage", "Specify static or dynamic linkage") orelse .static;
+    const enable_shm = b.option(bool, "enable_shm", "Enable shared-memory support via Iceoryx") orelse false;
+
+    const abi = target.result.abi;
+    if (abi == .musl and enable_shm) {
+        std.debug.print("WARNING: MUSL libC does not support Iceoryx for the shared-memory transport!\n", .{});
+        std.debug.print("Either change the ABI to gnu, or disable shared-memory support.\n", .{});
+        std.debug.print("  You have been warned.\n", .{});
+    }
 
     const upstream = b.dependency("cyclonedds", .{});
-    const iceoryx = b.dependency("iceoryx", .{ .target = target, .optimize = optimize, .linkage = linkage });
-    const iceoryx_binding_c = iceoryx.artifact("iceoryx_binding_c");
 
     var lib = b.addLibrary(.{
         .name = "cyclonedds",
@@ -27,8 +33,25 @@ pub fn build(b: *std.Build) void {
     }
 
     lib.linkLibC();
-    lib.linkLibrary(iceoryx_binding_c);
-    lib.installLibraryHeaders(iceoryx_binding_c);
+
+    if (enable_shm) {
+        // Only link to Iceoryx if shared-memory support is requested
+        const iceoryx = b.lazyDependency("iceoryx", .{
+            .target = target,
+            .optimize = optimize,
+            .linkage = linkage,
+        }) orelse return error.iceoryxNotFound;
+        const iceoryx_binding_c = iceoryx.artifact("iceoryx_binding_c");
+
+        lib.linkLibrary(iceoryx_binding_c);
+        lib.installLibraryHeaders(iceoryx_binding_c);
+
+        // Also be sure to install the RouDi executable from Iceoryx
+        // This process is needed to enable shared memory use!
+        b.installArtifact(iceoryx.artifact("iox-roudi"));
+    }
+
+    const dds_has_shm: ?i32 = if (enable_shm) 1 else null;
 
     // These config headers are taken from the ROS Jazzy install wherever possible
     const features = b.addConfigHeader(
@@ -45,7 +68,7 @@ pub fn build(b: *std.Build) void {
             .DDS_HAS_SSL = 0, // TODO this is on in ROS but I don't have a build for ssl yet
             .DDS_HAS_TYPE_DISCOVERY = 1,
             .DDS_HAS_TOPIC_DISCOVERY = 1,
-            .DDS_HAS_SHM = 1,
+            .DDS_HAS_SHM = dds_has_shm,
         },
     );
     lib.addConfigHeader(features);
@@ -101,19 +124,19 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(upstream.path("src/ddsrt/src")); // For internal stuff
     lib.addCSourceFiles(.{
         .root = upstream.path(""),
-        .files = &ddsrt_sources_common,
+        .files = ddsrt_sources_common,
     });
 
     // TODO finish windows support, currently this doesn't work.
     if (target.result.os.tag == .windows) {
         lib.addCSourceFiles(.{
             .root = upstream.path(""),
-            .files = &ddsrt_sources_windows,
+            .files = ddsrt_sources_windows,
         });
     } else {
         lib.addCSourceFiles(.{
             .root = upstream.path(""),
-            .files = &ddsrt_sources_linux,
+            .files = ddsrt_sources_linux,
         });
     } // TODO MacOS support, freertos support?
 
@@ -122,7 +145,7 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(upstream.path("src/core/ddsc/src")); // For internal stuff
     lib.addCSourceFiles(.{
         .root = upstream.path(""),
-        .files = &ddsc_sources,
+        .files = ddsc_sources,
     });
 
     lib.addIncludePath(upstream.path("src/core/ddsi/include"));
@@ -130,13 +153,20 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(upstream.path("src/core/ddsi/src")); // for internal stuff
     lib.addCSourceFiles(.{
         .root = upstream.path(""),
-        .files = &ddsi_sources,
+        .files = ddsi_sources,
     });
+
+    if (enable_shm) {
+        lib.addCSourceFiles(.{
+            .root = upstream.path(""),
+            .files = shared_mem_sources,
+        });
+    }
 
     // For cyclonedds 0.11
     // lib.addIncludePath(upstream.path("cyclonedds/src/core/cdr/include"));
     // lib.addCSourceFiles(.{
-    //     .files = &cyclonedds_cdr_sources,
+    //     .files = cyclonedds_cdr_sources,
     // });
 
     lib.addIncludePath(upstream.path("src/security/core/include"));
@@ -145,16 +175,12 @@ pub fn build(b: *std.Build) void {
     lib.installHeadersDirectory(upstream.path("src/security/api/include"), "", .{});
     lib.addCSourceFiles(.{
         .root = upstream.path(""),
-        .files = &cyclonedds_security_sources,
+        .files = cyclonedds_security_sources,
     });
     b.installArtifact(lib);
-
-    // Also be sure to install the RouDi executable from Iceoryx
-    // This process is needed to enable shared memory use!
-    b.installArtifact(iceoryx.artifact("iox-roudi"));
 }
 
-const cyclonedds_security_sources = [_][]const u8{
+const cyclonedds_security_sources: []const []const u8 = &.{
     "src/security/core/src/dds_security_fsm.c",
     "src/security/core/src/dds_security_plugins.c",
     "src/security/core/src/dds_security_serialize.c",
@@ -162,15 +188,16 @@ const cyclonedds_security_sources = [_][]const u8{
     "src/security/core/src/dds_security_utils.c",
     "src/security/core/src/shared_secret.c",
 };
+
 // Used in version 0.11, needed to go to 0.10 for ros support
-// const cyclonedds_cdr_sources = [_][]const u8{
+// const cyclonedds_cdr_sources: []const []const u8 = &.{
 //     "src/core/cdr/src/dds_cdrstream.c",
 //     // TODO these part files don't seem to compile on their own
 //     // "src/core/cdr/src/dds_cdrstream_keys.part.c",
 //     // "src/core/cdr/src/dds_cdrstream_write.part.c",
 // };
 
-const ddsi_sources = [_][]const u8{
+const ddsi_sources: []const []const u8 = &.{
     "src/core/ddsi/src/ddsi_acknack.c",
     "src/core/ddsi/src/ddsi_cdrstream.c",
     // TODO these part files don't seem to compile on their own
@@ -212,7 +239,6 @@ const ddsi_sources = [_][]const u8{
     "src/core/ddsi/src/ddsi_sertype_default.c",
     "src/core/ddsi/src/ddsi_sertype_plist.c",
     "src/core/ddsi/src/ddsi_sertype_pserop.c",
-    "src/core/ddsi/src/ddsi_shm_transport.c",
     "src/core/ddsi/src/ddsi_ssl.c",
     "src/core/ddsi/src/ddsi_statistics.c",
     "src/core/ddsi/src/ddsi_tcp.c",
@@ -256,7 +282,8 @@ const ddsi_sources = [_][]const u8{
     "src/core/ddsi/src/q_xmsg.c",
     "src/core/ddsi/src/sysdeps.c",
 };
-const ddsc_sources = [_][]const u8{
+
+const ddsc_sources: []const []const u8 = &.{
     "src/core/ddsc/src/dds_alloc.c",
     "src/core/ddsc/src/dds_builtin.c",
     "src/core/ddsc/src/dds_coherent.c",
@@ -289,10 +316,9 @@ const ddsc_sources = [_][]const u8{
     "src/core/ddsc/src/dds_whc.c",
     "src/core/ddsc/src/dds_write.c",
     "src/core/ddsc/src/dds_writer.c",
-    "src/core/ddsc/src/shm_monitor.c",
 };
 
-const ddsrt_sources_linux = [_][]const u8{
+const ddsrt_sources_linux: []const []const u8 = &.{
     "src/ddsrt/src/dynlib/posix/dynlib.c", // Required for security, which uses plugins (shouldn't impact base static build?)
     "src/ddsrt/src/environ/posix/environ.c",
     "src/ddsrt/src/filesystem/posix/filesystem.c",
@@ -309,7 +335,7 @@ const ddsrt_sources_linux = [_][]const u8{
     "src/ddsrt/src/sync/posix/sync.c", // TODO make multi platform?
 };
 
-const ddsrt_sources_windows = [_][]const u8{
+const ddsrt_sources_windows: []const []const u8 = &.{
     "src/ddsrt/src/heap/posix/heap.c", // Windows seems to use the posix heap as well in the cyclone cmakelist
     "src/ddsrt/src/dynlib/windows/dynlib.c",
     "src/ddsrt/src/environ/windows/environ.c",
@@ -326,7 +352,7 @@ const ddsrt_sources_windows = [_][]const u8{
     "src/ddsrt/src/sockets/windows/gethostname.c",
 };
 
-const ddsrt_sources_common = [_][]const u8{
+const ddsrt_sources_common: []const []const u8 = &.{
     // TODO make multi platform
     "src/ddsrt/src/atomics.c",
     "src/ddsrt/src/avl.c",
@@ -351,4 +377,9 @@ const ddsrt_sources_common = [_][]const u8{
     "src/ddsrt/src/threads.c",
     "src/ddsrt/src/time.c",
     "src/ddsrt/src/xmlparser.c",
+};
+
+const shared_mem_sources: []const []const u8 = &.{
+    "src/core/ddsi/src/ddsi_shm_transport.c",
+    "src/core/ddsc/src/shm_monitor.c",
 };
