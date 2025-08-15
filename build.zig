@@ -36,11 +36,7 @@ pub fn build(b: *std.Build) !void {
 
     if (enable_shm) {
         // Only link to Iceoryx if shared-memory support is requested
-        const iceoryx = b.lazyDependency("iceoryx", .{
-            .target = target,
-            .optimize = optimize,
-            .linkage = linkage,
-        }) orelse return error.iceoryxNotFound;
+        const iceoryx = b.dependency("iceoryx", .{ .target = target, .optimize = optimize, .linkage = linkage });
         const iceoryx_binding_c = iceoryx.artifact("iceoryx_binding_c");
 
         lib.linkLibrary(iceoryx_binding_c);
