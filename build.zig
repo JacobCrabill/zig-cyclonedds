@@ -5,6 +5,7 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const linkage = b.option(std.builtin.LinkMode, "linkage", "Specify static or dynamic linkage") orelse .static;
     const enable_shm = b.option(bool, "enable_shm", "Enable shared-memory support via Iceoryx") orelse false;
+    const pic = b.option(bool, "pic", "Enable position-independent code (default for dynamic libs");
 
     const abi = target.result.abi;
     if (abi == .musl and enable_shm) {
@@ -17,13 +18,12 @@ pub fn build(b: *std.Build) !void {
 
     var lib = b.addLibrary(.{
         .name = "cyclonedds",
-        .root_module = b.createModule(
-            .{
-                .target = target,
-                .optimize = optimize,
-                .pic = if (linkage == .dynamic) true else null,
-            },
-        ),
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .strip = (optimize != .Debug),
+            .pic = if (linkage == .dynamic) true else pic,
+        }),
         .linkage = linkage,
     });
 

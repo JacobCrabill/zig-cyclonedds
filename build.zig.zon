@@ -11,8 +11,8 @@
             .hash = "N-V-__8AACnWFwGlpbCwe75eP_FCTGeA9OVoBZaAm1f78VV3",
         },
         .iceoryx = .{
-            .url = "https://github.com/JacobCrabill/zig-iceoryx/archive/7290df34185c293eadb408b70aa1e3d534c28f6f.tar.gz",
-            .hash = "zig_iceoryx-2.95.4-HVvgtnRsAABR0yz96gj3b-2fEGjUtNzCCoUiNYD9qI6C",
+            .url = "https://github.com/JacobCrabill/zig-iceoryx/archive/b4f591aee4830558fdd1c29cbc70a66bbac6511f.tar.gz",
+            .hash = "zig_iceoryx-2.95.4-HVvgtjtsAAD_y5DOTiqc0yBkSDsvrmcb_SVe6-YDiX0i",
             // TODO: Figure out how to properly use lazy dependencies; right now they just break everything
             //.lazy = true,
         },
